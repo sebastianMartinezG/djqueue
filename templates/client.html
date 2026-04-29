@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎵 DJ Queue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #2a2a3a;
+    --accent: #ff3366;
+    --accent2: #00e5ff;
+    --gold: #ffd700;
+    --text: #e8e8f0;
+    --muted: #666680;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Ambient glow background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -20%;
+    left: -10%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(ellipse, rgba(255,51,102,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -10%;
+    right: -10%;
+    width: 50%;
+    height: 50%;
+    background: radial-gradient(ellipse, rgba(0,229,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 440px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 4rem;
+    letter-spacing: 6px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--gold) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    filter: drop-shadow(0 0 20px rgba(255,51,102,0.4));
+  }
+
+  .tagline {
+    font-size: 0.7rem;
+    letter-spacing: 4px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 0.4rem;
+  }
+
+  /* Live counter */
+  .queue-counter {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    border-radius: 8px;
+    padding: 0.8rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+    animation: fadeDown 0.6s 0.1s ease both;
+  }
+  .queue-counter .dot {
+    width: 8px; height: 8px;
+    background: var(--accent2);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+    flex-shrink: 0;
+  }
+  .queue-counter span { font-size: 0.75rem; color: var(--muted); }
+  .queue-counter strong { color: var(--accent2); }
+
+  /* Form card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .card h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 3px;
+    color: var(--text);
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .field { margin-bottom: 1.2rem; }
+
+  label {
+    display: block;
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.9rem;
+    padding: 0.8rem 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255,51,102,0.15);
+  }
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  .btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), #cc0044);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 3px;
+    padding: 0.9rem;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+    margin-top: 0.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(255,51,102,0.4); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn.loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: shimmer 1s infinite;
+  }
+
+  /* Response / feedback */
+  .feedback {
+    margin-top: 1.2rem;
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    display: none;
+    animation: fadeUp 0.3s ease both;
+  }
+  .feedback.success {
+    background: rgba(0,229,100,0.08);
+    border: 1px solid rgba(0,229,100,0.3);
+    color: #00e564;
+    display: block;
+  }
+  .feedback.error {
+    background: rgba(255,51,51,0.08);
+    border: 1px solid rgba(255,51,51,0.3);
+    color: #ff6666;
+    display: block;
+  }
+  .feedback.warning {
+    background: rgba(255,180,0,0.08);
+    border: 1px solid rgba(255,180,0,0.3);
+    color: var(--gold);
+    display: block;
+  }
+
+  .feedback .pos-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    padding: 0.1rem 0.5rem;
+    font-weight: bold;
+    font-size: 1rem;
+    margin: 0.4rem 0;
+  }
+
+  /* My songs section */
+  .my-songs {
+    margin-top: 1.5rem;
+    animation: fadeUp 0.5s 0.3s ease both;
+    display: none;
+  }
+  .my-songs.visible { display: block; }
+
+  .my-songs h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 3px;
+    font-size: 1rem;
+    color: var(--muted);
+    margin-bottom: 0.8rem;
+  }
+
+  .song-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+  }
+  .song-item .song-pos {
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .song-item .song-name { flex: 1; color: var(--text); }
+  .song-item .song-label { font-size: 0.65rem; color: var(--muted); }
+
+  /* Rules */
+  .rules {
+    margin-top: 1.5rem;
+    padding: 1rem 1.2rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    line-height: 1.8;
+    animation: fadeUp 0.6s 0.4s ease both;
+  }
+  .rules strong { color: var(--text); }
+
+  @keyframes fadeDown { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:none; } }
+  @keyframes fadeUp   { from { opacity:0; transform:translateY(16px);  } to { opacity:1; transform:none; } }
+  @keyframes pulse    { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+  @keyframes shimmer  { from{transform:translateX(-100%)} to{transform:translateX(100%)} }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">DJ QUEUE</div>
+    <div class="tagline">Pide tu canción — Sistema justo de turnos</div>
+  </header>
+
+  <div class="queue-counter">
+    <div class="dot"></div>
+    <span>Cola activa: <strong id="totalCount">—</strong> canción(es) esperando</span>
+  </div>
+
+  <div class="card">
+    <h2>🎵 Pedir Canción</h2>
+
+    <div class="field">
+      <label>Tu nombre / alias</label>
+      <input type="text" id="identifier" placeholder="ej. Carlos" autocomplete="off" maxlength="40">
+    </div>
+
+    <div class="field">
+      <label>Canción – Artista</label>
+      <input type="text" id="song" placeholder="ej. Quevedo – Quédate" autocomplete="off" maxlength="100">
+    </div>
+
+    <button class="btn" id="submitBtn" onclick="submitRequest()">AGREGAR A LA COLA</button>
+
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="my-songs" id="mySongs">
+    <h3>TUS CANCIONES EN COLA</h3>
+    <div id="songsList"></div>
+  </div>
+
+  <div class="rules">
+    <strong>📋 Reglas del sistema:</strong><br>
+    · Máximo <strong>3 canciones</strong> activas por persona<br>
+    · Si ya tienes canciones en espera, las nuevas van con <strong>prioridad reducida</strong><br>
+    · ¡Sé justo para que todos disfruten!
+  </div>
+
+</div>
+
+<script>
+let lastIdentifier = localStorage.getItem('djq_user') || '';
+if (lastIdentifier) document.getElementById('identifier').value = lastIdentifier;
+
+async function submitRequest() {
+  const identifier = document.getElementById('identifier').value.trim();
+  const song       = document.getElementById('song').value.trim();
+  const btn        = document.getElementById('submitBtn');
+  const fb         = document.getElementById('feedback');
+
+  if (!identifier || !song) {
+    showFeedback('error', '⚠️ Por favor completa tu nombre y la canción.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.textContent = 'ENVIANDO…';
+  fb.className = 'feedback';
+
+  try {
+    const res  = await fetch('/request', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ identifier, song })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      const warn = data.active_songs > 1
+        ? `<br><span style="color:var(--gold);font-size:0.75rem;">⚠️ Ya tienes ${data.active_songs} canciones — posición con penalización aplicada</span>`
+        : '';
+      showFeedback('success',
+        `✅ ${data.message}<br>
+         <span class="pos-badge">#${data.position_in_queue}</span> en la cola${warn}`
+      );
+      document.getElementById('song').value = '';
+      localStorage.setItem('djq_user', identifier);
+      lastIdentifier = identifier;
+      setTimeout(() => loadMySongs(identifier), 500);
+    } else {
+      showFeedback(res.status === 429 ? 'warning' : 'error', `❌ ${data.error}`);
+    }
+  } catch(e) {
+    showFeedback('error', '🔌 Error de conexión. Intenta de nuevo.');
+  }
+
+  btn.disabled = false;
+  btn.classList.remove('loading');
+  btn.textContent = 'AGREGAR A LA COLA';
+  updateTotalCount();
+}
+
+function showFeedback(type, html) {
+  const fb = document.getElementById('feedback');
+  fb.className = `feedback ${type}`;
+  fb.innerHTML = html;
+}
+
+async function loadMySongs(identifier) {
+  if (!identifier) return;
+  const res  = await fetch(`/queue-status?user=${encodeURIComponent(identifier)}`);
+  const data = await res.json();
+  const box  = document.getElementById('mySongs');
+  const list = document.getElementById('songsList');
+
+  document.getElementById('totalCount').textContent = data.total_in_queue;
+
+  if (data.songs.length === 0) {
+    box.classList.remove('visible');
+    return;
+  }
+
+  list.innerHTML = data.songs.map(s => `
+    <div class="song-item">
+      <div class="song-pos">${s.queue_pos}</div>
+      <div>
+        <div class="song-name">${escHtml(s.song)}</div>
+        <div class="song-label">posición en cola</div>
+      </div>
+    </div>
+  `).join('');
+  box.classList.add('visible');
+}
+
+async function updateTotalCount() {
+  const res  = await fetch(`/queue-status?user=`);
+  const data = await res.json();
+  document.getElementById('totalCount').textContent = data.total_in_queue;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Init
+updateTotalCount();
+if (lastIdentifier) loadMySongs(lastIdentifier);
+setInterval(updateTotalCount, 15000);
+
+document.getElementById('identifier').addEventListener('blur', e => {
+  const v = e.target.value.trim();
+  if (v) loadMySongs(v);
+});
+
+// Enter key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitRequest();
+});
+</script>
+</body>
+</html>

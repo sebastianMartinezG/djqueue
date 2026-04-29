@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel – DJ Queue</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f; --surface:#12121a; --border:#2a2a3a;
+    --accent:#ff3366; --accent2:#00e5ff; --gold:#ffd700;
+    --text:#e8e8f0; --muted:#666680; --green:#00e564;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; min-height:100vh; }
+
+  /* Top bar */
+  .topbar {
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+    padding:1rem 2rem;
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:100;
+  }
+  .topbar .brand { font-family:'Bebas Neue'; font-size:1.6rem; letter-spacing:4px; color:var(--accent); }
+  .topbar .controls { display:flex; gap:1rem; align-items:center; }
+  .topbar .auto-refresh { font-size:0.65rem; color:var(--muted); display:flex; align-items:center; gap:0.4rem; }
+  .dot { width:7px;height:7px; background:var(--green); border-radius:50%; animation:pulse 1.5s infinite; }
+  .btn-logout { font-family:'Space Mono'; font-size:0.7rem; background:transparent; border:1px solid var(--border); color:var(--muted); padding:0.4rem 0.8rem; border-radius:6px; cursor:pointer; }
+  .btn-logout:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* Stats row */
+  .stats {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr));
+    gap:1rem; padding:1.5rem 2rem 0;
+  }
+  .stat-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:1rem 1.2rem;
+  }
+  .stat-card .label { font-size:0.6rem; letter-spacing:3px; text-transform:uppercase; color:var(--muted); }
+  .stat-card .value { font-family:'Bebas Neue'; font-size:2.2rem; margin-top:0.2rem; }
+  .stat-card.pending .value { color:var(--accent2); }
+  .stat-card.played  .value { color:var(--green); }
+
+  /* Queue */
+  .queue-section { padding:1.5rem 2rem; }
+  .queue-section h2 { font-family:'Bebas Neue'; letter-spacing:4px; font-size:1.2rem; color:var(--muted); margin-bottom:1rem; }
+
+  .queue-table { width:100%; border-collapse:collapse; }
+  .queue-table thead tr { border-bottom:2px solid var(--border); }
+  .queue-table th { font-size:0.6rem; letter-spacing:3px; text-transform:uppercase; color:var(--muted); padding:0.6rem 0.8rem; text-align:left; }
+  .queue-table tbody tr {
+    border-bottom:1px solid var(--border);
+    transition:background .15s;
+    animation:fadeIn .3s ease both;
+  }
+  .queue-table tbody tr:hover { background:rgba(255,255,255,0.02); }
+  .queue-table td { padding:0.9rem 0.8rem; font-size:0.8rem; vertical-align:middle; }
+
+  .pos-badge {
+    display:inline-grid; place-items:center;
+    width:30px; height:30px; border-radius:50%;
+    font-family:'Bebas Neue'; font-size:1rem;
+    background:var(--accent); color:#fff;
+  }
+  .pos-badge.top { background:var(--gold); color:#000; }
+
+  .user-tag {
+    background:rgba(0,229,255,0.1); border:1px solid rgba(0,229,255,0.2);
+    color:var(--accent2); border-radius:4px; padding:0.1rem 0.5rem;
+    font-size:0.7rem;
+  }
+  .multi-tag {
+    display:inline-block; background:rgba(255,180,0,0.15);
+    border:1px solid rgba(255,180,0,0.3); color:var(--gold);
+    border-radius:4px; padding:0.1rem 0.4rem; font-size:0.62rem;
+    margin-left:0.4rem;
+  }
+
+  .song-name { font-weight:700; }
+  .time-ago  { color:var(--muted); font-size:0.7rem; }
+
+  .btn-played {
+    background:transparent; border:1px solid var(--green);
+    color:var(--green); font-family:'Space Mono'; font-size:0.7rem;
+    padding:0.4rem 0.8rem; border-radius:6px; cursor:pointer;
+    transition:background .15s, color .15s;
+    white-space:nowrap;
+  }
+  .btn-played:hover { background:var(--green); color:#000; }
+  .btn-played:disabled { opacity:.4; cursor:not-allowed; }
+
+  .empty-state {
+    text-align:center; padding:4rem 2rem;
+    color:var(--muted); font-size:0.8rem; letter-spacing:2px;
+  }
+  .empty-state .icon { font-size:3rem; margin-bottom:1rem; }
+
+  @keyframes pulse  { 0%,100%{opacity:1}50%{opacity:.3} }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+  @media(max-width:600px){
+    .stats { padding:1rem; }
+    .queue-section { padding:1rem; }
+    .topbar { padding:0.8rem 1rem; }
+    .queue-table th:nth-child(4),
+    .queue-table td:nth-child(4) { display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">🎛 DJ QUEUE</div>
+  <div class="controls">
+    <div class="auto-refresh">
+      <div class="dot"></div>
+      <span>Auto-refresh</span>
+    </div>
+    <button class="btn-logout" onclick="location.href='/admin/logout'">SALIR</button>
+  </div>
+</div>
+
+<div class="stats" id="statsRow">
+  <div class="stat-card pending">
+    <div class="label">En Cola</div>
+    <div class="value" id="statPending">—</div>
+  </div>
+  <div class="stat-card played">
+    <div class="label">Reproducidas</div>
+    <div class="value" id="statPlayed">—</div>
+  </div>
+</div>
+
+<div class="queue-section">
+  <h2>COLA ACTUAL</h2>
+  <div id="queueContainer">
+    <div class="empty-state"><div class="icon">🎵</div>Cargando cola…</div>
+  </div>
+</div>
+
+<script>
+async function loadQueue() {
+  const res  = await fetch('/admin/queue');
+  const rows = await res.json();
+  const cont = document.getElementById('queueContainer');
+
+  if (!rows.length) {
+    cont.innerHTML = '<div class="empty-state"><div class="icon">🎶</div>La cola está vacía.<br>¡Esperando solicitudes!</div>';
+    return;
+  }
+
+  const tbody = rows.map((r, i) => {
+    const pos   = i + 1;
+    const badge = `<span class="pos-badge${pos===1?' top':''}">${pos}</span>`;
+    const multi = r.user_active > 1
+      ? `<span class="multi-tag">+${r.user_active-1} más</span>`
+      : '';
+    const time  = new Date(r.created_at + 'Z').toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+    return `
+      <tr id="row-${r.id}">
+        <td>${badge}</td>
+        <td><span class="user-tag">${esc(r.identifier)}</span>${multi}</td>
+        <td><span class="song-name">${esc(r.song)}</span></td>
+        <td><span class="time-ago">${time}</span></td>
+        <td>
+          <button class="btn-played" onclick="markPlayed(${r.id}, this)">
+            ✓ REPRODUCIDA
+          </button>
+        </td>
+      </tr>`;
+  }).join('');
+
+  cont.innerHTML = `
+    <table class="queue-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Usuario</th><th>Canción</th><th>Hora</th><th></th>
+        </tr>
+      </thead>
+      <tbody>${tbody}</tbody>
+    </table>`;
+}
+
+async function loadStats() {
+  const res  = await fetch('/admin/stats');
+  const data = await res.json();
+  document.getElementById('statPending').textContent = data.pending;
+  document.getElementById('statPlayed').textContent  = data.played;
+}
+
+async function markPlayed(id, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  await fetch(`/admin/played/${id}`, { method:'POST' });
+  const row = document.getElementById(`row-${id}`);
+  if (row) {
+    row.style.transition = 'opacity .4s, transform .4s';
+    row.style.opacity = '0';
+    row.style.transform = 'translateX(30px)';
+    setTimeout(() => { loadQueue(); loadStats(); }, 400);
+  }
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function refresh() { loadQueue(); loadStats(); }
+refresh();
+setInterval(refresh, 8000);
+</script>
+</body>
+</html>
